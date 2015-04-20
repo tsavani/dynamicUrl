@@ -1,0 +1,198 @@
+<h1 style="color:lightblue;padding-left:100px;">Chargement...<span style="font-size:12px; color:grey">Load URLs in new window one by one, Interval time 8 second.</span></h1>
+<br /><br />
+
+<form id="form1" enctype="multipart/form-data" remote="true" accept-charset="ISO-8859-1">
+ <div class="row">
+  <div id="profile">
+    <div id="error"></div>
+    <table>
+      <div id="url_list"></div>
+    </table> 
+    <input type="button" value="Export data" id="export_data" class= "btn btn-primary">
+    <hr />
+    <%#= label_tag :url, 'URL :' %> 
+    <h2><p>Add Url</p></h2>
+    <%= text_field_tag :url%>
+    <input type="button" value="Add URL" id="add_url" class= "btn btn-large btn-primary">
+    <br/>
+    <hr />
+    <%#= label_tag :url, 'URL :' %> 
+    <h2><p>Import Data</p></h2>
+    <input type="file" value="excel" id="import_data"><br /><br />
+    <input type="button" value="Upload Data" id="upload_data" class= "btn btn-primary">
+    <br/>
+    <hr />
+    <div>
+      <input type="button" value="Run" onclick="run(this)" class= "btn btn-large btn-primary"> 
+      <input type="button" value="Stop" onclick="stop()" class= "btn btn-large btn-primary">
+    </div>
+  </div>
+</div>
+
+</form>
+<br>
+
+
+<%content_for :head do %>
+
+<script type="text/javascript" charset="utf-8">
+
+    var all_url =[];
+    var array_of_urls = new Array();
+    var nIntervId;
+    var count=0;
+    var flag = 0;
+
+
+  $(document).ready(function(){
+  //it will run at the time of page loading...
+        document.getElementById("url").value = " " ;
+        document.charset = 'ISO-8859-1';
+        all_url = [];
+          $.ajax({
+            type: "GET",
+            url:"/get_data",
+            success:function(result){
+              $("#url_list").html(" ");
+              $("#url_list").append('<tr><td><b>URLs</b></td><td><b>Action</b></td></tr>')
+              $.each(result,function(key,val){
+                all_url.push(val.url);
+                $("#url_list").append('<tr><td>'+val.url+'</td><td> <input type="button" value="Delete URL" id="delete_'+ val.id +'" class= "delete btn btn-primary" onclick = "delete_data('+val.id+');"></td></tr>');
+                  array_of_urls = all_url;
+              });
+            } , async:   false
+          });
+
+  // add new URL.......
+    $("#add_url").click(function(){
+      
+      $("#error").html('');
+      var val = document.getElementById("url").value;
+      all_url = [];
+  
+      var message;
+      var myRegExp =/^(?:(?:https?|ftp):\/\/)(?:\S+(?::\S*)?@)?(?:(?!10(?:\.\d{1,3}){3})(?!127(?:\.\d{1,3}){3})(?!169\.254(?:\.\d{1,3}){2})(?!192\.168(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:\/[^\s]*)?$/i;
+
+      if (!myRegExp.test(val.trim())){
+         $("#error").html('<p id="red">Please Enter Valid URL</p>');
+         document.getElementById("url").value = "" ;
+         return;
+      }
+
+
+      // if (val == " " ){
+      //     $("#error").html('<p id="red">Please Enter Valid URL</p>');
+      //    return;
+      // }
+      
+      $.ajax({
+        type: "GET",
+        url:"/add?url="+val,
+        success:function(result){
+                 document.getElementById("url").value = " " ;
+                $("#url_list").html(" ");
+                $("#url_list").append('<tr><td><b>URLs</b></td><td><b>Action</b></td></tr>')
+              $.each(result,function(key,val){
+                all_url.push(val.url);
+                 $("#url_list").append('<tr><td>'+val.url+'</td><td> <input type="button" value="Delete URL" id="delete_'+ val.id +'" class= "btn btn-primary" onclick = "delete_data('+val.id+');"></td></tr>');
+                  array_of_urls = all_url;
+         });            
+       },  async:   false
+      }); 
+    });
+
+      // Import Urls URL.......
+     $("#upload_data").click(function(){
+        $("#error").html('');
+        var val = document.getElementById("import_data").value;
+        var file = document.getElementById("import_data").files[0]; 
+        var ext = file.name.split(".").pop();
+        all_url = [];
+        if (val == " " && (ext != "xlsx" || ext != "xls"))
+        {
+           $("#error").html('<p id="red">Please Select Valid File</p>');
+           //document.getElementById("import_data").file = null ;
+           //window.fileInputForm.reset();
+            $("#import_data").replaceWith($("#import_data").val('').clone(true));
+           return;
+        } 
+
+        $.ajax({
+          type: "POST", 
+          url:"/import?name="+file.name,
+          contentType: 'charset=utf-8',
+          data: file,
+          processData: false,
+          success:function(result){
+                   document.getElementById("url").value = " " ;
+                  $("#url_list").html(" ");
+                  $("#url_list").append('<tr><td><b>URLs</b></td><td><b>Action</b></td></tr>')
+                $.each(result,function(key,val){
+                  all_url.push(val.url);
+                   $("#url_list").append('<tr><td>'+val.url+'</td><td> <input type="button" value="Delete URL" id="delete_'+ val.id +'" class= "btn btn-primary" onclick = "delete_data('+val.id+');"></td></tr>');
+                    array_of_urls = all_url;
+           });            
+        },  async:   false
+      }); 
+    });
+
+
+  });
+
+//for delete URL.....
+function delete_data(id){
+  $("#error").html('');
+  all_url = [];
+  $.ajax({
+    type: "GET",
+    url:"/delete?id="+id,
+    success:function(result){
+      flag=0;
+      $("#url_list").html(" ");
+      $("#url_list").append('<tr><td><b>URLs</b></td><td><b>Action</b></td></tr>')
+      $.each(result,function(key,val){
+        all_url.push(val.url);
+        $("#url_list").append('<tr><td>'+val.url+'</td><td> <input type="button" value="Delete URL" id="delete_'+ val.id +'" class= "btn btn-primary" onclick = "delete_data('+val.id+');"></td></tr>');
+        array_of_urls = all_url; 
+        flag = 1;
+      });       
+      if(flag == 0){
+        array_of_urls.length = 0;
+      }
+    },  async:   false
+  });
+}
+     
+function run()
+{
+  $("#error").html('');
+  if(array_of_urls == ''){
+     $("#error").html('<p id="red">Please Enter URL...!!!</p>');
+    return;
+  }
+  nIntervId = setInterval(flashUrl, 5000);
+}
+
+function flashUrl() {  
+ if(array_of_urls.length == 0){
+   $("#error").html('<p id="red">Please Enter URL first</p>');
+    clearInterval(nIntervId);
+    return;
+ }
+ var len =  array_of_urls.length ; 
+ if(count >= len){
+    count = 0;
+ }
+ else{ 
+    window.open (array_of_urls[count],"mywindow");
+    count = count + 1;
+ }
+}
+
+function stop() {
+  clearInterval(nIntervId);
+}
+
+</script>
+
+<%end%>
